@@ -1,5 +1,7 @@
 var mumble = require('electron-mumble')
 
+var connect;
+
 document.addEventListener('DOMContentLoaded', function () {
 
     var queue = []
@@ -8,13 +10,21 @@ document.addEventListener('DOMContentLoaded', function () {
     var startTime = 0
     var actx = new AudioContext()
 
-    mumble.connect( 'your.domain.com', {}, function ( error, _client ) {
+    connect = function () {
+
+    var server = document.getElementById('server').value
+    var username = document.getElementById('username').value
+    var password = document.getElementById('password').value
+
+    console.log('Connecting to: ' + server + '...')
+
+    mumble.connect( server, {}, function ( error, _client ) {
         if( error ) { throw new Error( error ); }
 
         console.log( 'Connected' );
 
         client = _client
-        client.authenticate( '<username>', '<password>' );
+        client.authenticate( username, password );
         client.on( 'initialized', onInit );
         client.on( 'voice', onVoice );
     });
@@ -58,5 +68,6 @@ document.addEventListener('DOMContentLoaded', function () {
         source.buffer = buffer
         source.start(startTime)
         startTime += buffer.duration
+    }
     }
 })

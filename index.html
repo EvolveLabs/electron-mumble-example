@@ -6,7 +6,13 @@
   </head>
   <body>
     <h1>Hello World!</h1>
-    We are using io.js <script>document.write(process.version)</script>
-    and Electron <script>document.write(process.versions['electron'])</script>.
+    We are using io.js <script>document.write(process.version)</script> and Electron <script>document.write(process.versions['electron'])</script>.
+
+    <ul>
+      <li>server: <input type="text" id="server" value="your.domain.com"></li>
+      <li>username: <input type="text" id="username"></li>
+      <li>password: <input type="password" id="password"></li>
+      <li><input type="button" onclick="connect()" value="Connect"></li>
+    <ul>
   </body>
 </html>
