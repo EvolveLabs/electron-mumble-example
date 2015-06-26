@@ -8,13 +8,13 @@ document.addEventListener('DOMContentLoaded', function () {
     var startTime = 0
     var actx = new AudioContext()
 
-    mumble.connect( 'voice.evolvehq.com', {}, function ( error, _client ) {
+    mumble.connect( 'your.domain.com', {}, function ( error, _client ) {
         if( error ) { throw new Error( error ); }
 
         console.log( 'Connected' );
 
         client = _client
-        client.authenticate( 'mrbumpy', 'gameplantest' );
+        client.authenticate( '<username>', '<password>' );
         client.on( 'initialized', onInit );
         client.on( 'voice', onVoice );
     });
