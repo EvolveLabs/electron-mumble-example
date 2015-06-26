@@ -20,6 +20,5 @@ $ npm install node-gyp -g
 $ git clone git@github.com:evolvelabs/electron-mumble-example.git
 $ cd electron-mumble-example
 $ npm install
-$ npm install electron-prebuilt -g
 $ electron .
 ```
