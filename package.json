@@ -24,6 +24,6 @@
     "electron-prebuilt": "^0.28.3"
   },
   "dependencies": {
-    "electron-mumble": "^0.1.5"
+    "electron-mumble": "^0.1.6"
   }
 }
