@@ -1,18 +1,14 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Hello World!</title>
+    <title>Mumble Electron Example</title>
+    <script src="node_modules/angular/angular.js"></script>
+    <script src="node_modules/angular-ui-router/release/angular-ui-router.js"></script>
+    <script src="node_modules/angular-bootstrap/dist/ui-bootstrap-tpls.js"></script>
     <script src="index.js"></script>
+    <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.css">
   </head>
-  <body>
-    <h1>Hello World!</h1>
-    We are using io.js <script>document.write(process.version)</script> and Electron <script>document.write(process.versions['electron'])</script>.
-
-    <ul>
-      <li>server: <input type="text" id="server" value="your.domain.com"></li>
-      <li>username: <input type="text" id="username"></li>
-      <li>password: <input type="password" id="password"></li>
-      <li><input type="button" onclick="connect()" value="Connect"></li>
-    <ul>
+  <body ng-app="main" class="container">
+    <div ui-view></div>
   </body>
 </html>

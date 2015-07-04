@@ -1,0 +1,23 @@
+<div class="col-md-6 show-grid" ng-controller="ConnectionController">
+  <div class="form-group">
+    <label>Server:</label>
+    <input type="text" ng-model="server" class="form-control" ng-disabled="!!status" placeholder="e.g. voice.mumble.com">
+  </div>
+  <div class="form-group">
+    <label>Username:</label>
+    <input type="text" ng-model="username" class="form-control" ng-disabled="!!status">
+  </div>
+  <div class="form-group">
+    <label>Password:</label>
+    <input type="password" ng-model="password" class="form-control" ng-disabled="!!status">
+  </div>
+  <div class="form-group">
+    <button type="submit" class="btn btn-primary" ng-click="connect()" ng-disabled="!!status">Connect</button>
+    <button class="btn btn-danger" ng-click="disconnect()" ng-disabled="!status">Disconnect</button>
+  </div>      
+  <div class="form-group">
+    <div class="alert alert-info" ng-show="status=='connecting'">connecting...</div>
+    <div class="alert alert-success" ng-show="status=='connected'">connected. Proceed to <a href="#" ng-click="go('main.basic')">Basic Example</a></div>
+    <div class="alert alert-danger" ng-show="!!error">{{error}}</div>
+  </div>
+</div>  
