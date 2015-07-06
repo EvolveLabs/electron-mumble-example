@@ -71,7 +71,7 @@ function onUserMedia (stream) {
 
     var client = this.client
     var source = this.context.createMediaStreamSource(stream)
-    var proc = this.context.createScriptProcessor(64, 1, 1)
+    var proc = this.context.createScriptProcessor(256, 1, 1)
     source.connect(proc)
     proc.connect(this.context.destination)
     proc.onaudioprocess = function (event) {
