@@ -1,0 +1,14 @@
+<div ng-controller="NavigationController">
+
+    <tabset>
+        <tab 
+            ng-repeat="tab in tabs" 
+            heading="{{tab.heading}}"
+            select="go(tab.route)"
+            active="tab.active">
+        </tab>
+    </tabset>
+
+    <div ui-view></div>
+
+</div>
