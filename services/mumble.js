@@ -7,6 +7,8 @@ function MumbleService($q, storageService) {
     this.$q = $q
     this.storageService = storageService
     this.queue = []
+    this.out_queue = []
+    this.out_stream = null
     this.playing = false
     this.client = null
     this.startTime = 0
@@ -50,6 +52,7 @@ function connect(server, username, password) {
             console.log('authenticated.')
             that.status = 'connected'
             navigator.webkitGetUserMedia({audio: true}, onUserMedia.bind(that), onError.bind(that))
+            that.out_stream = that.client.inputStream()
             deferred.resolve()
         })
     })
@@ -69,9 +72,9 @@ function disconnect() {
 
 function onUserMedia (stream) {
 
-    var client = this.client
+    var that = this
     var source = this.context.createMediaStreamSource(stream)
-    var proc = this.context.createScriptProcessor(256, 1, 1)
+    var proc = this.context.createScriptProcessor(512, 1, 1)
     source.connect(proc)
     proc.connect(this.context.destination)
     proc.onaudioprocess = function (event) {
@@ -81,11 +84,19 @@ function onUserMedia (stream) {
             var pcmData = new Buffer(size * 2)
             for(var i = 0; i < size; i++) {
                 var x = data[i] * 32768
+                x = Math.min(Math.max(x, -32768), 32767)
                 pcmData.writeInt16LE(x, i * 2)
             }
 
-            if (client) {
-                client.sendVoice(pcmData)
+            if (that.client) {
+                if (that.sending || that.out_queue.length > 0) {
+                    that.out_queue.push(pcmData);
+                    while(that.out_queue > 100) {
+                        that.out_queue.shift()
+                    }
+                } else {
+                   that.send(pcmData)
+                }
             } else {
                 proc.disconnect(source)
                 source.disconnect(proc)
@@ -110,6 +121,20 @@ function onVoice( pcmData ) {
     } else {
        this.play(data)
     }
+}
+
+function sendNext() {
+    if(this.out_queue.length > 0) {
+        var data = this.queue.shift()
+        this.send(data)
+    } else {
+        this.sending = false
+    }
+}
+
+function send(data) {
+    this.sending = true
+    this.out_stream.write(data, sendNext.bind(this))
 }
 
 function playNext() {
@@ -140,4 +165,6 @@ MumbleService.prototype.connect = connect
 MumbleService.prototype.disconnect = disconnect
 MumbleService.prototype.play = play
 MumbleService.prototype.playNext = playNext
+MumbleService.prototype.send = send
+MumbleService.prototype.sendNext = sendNext
 module.exports = MumbleService
