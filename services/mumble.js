@@ -73,40 +73,48 @@ function disconnect() {
 function onUserMedia (stream) {
 
     var that = this
-    var source = this.context.createMediaStreamSource(stream)
-    var proc = this.context.createScriptProcessor(512, 1, 1)
-    source.connect(proc)
-    proc.connect(this.context.destination)
-    proc.onaudioprocess = function (event) {
-        var data = event.inputBuffer.getChannelData(0)
-        if(data) {
-            var size = data.length
-            var pcmData = new Buffer(size * 2)
-            for(var i = 0; i < size; i++) {
-                var x = data[i] * 32768
-                x = Math.min(Math.max(x, -32768), 32767)
-                pcmData.writeInt16LE(x, i * 2)
-            }
-
-            if (that.client) {
-                if (that.sending || that.out_queue.length > 0) {
-                    that.out_queue.push(pcmData);
-                    while(that.out_queue > 100) {
-                        that.out_queue.shift()
-                    }
-                } else {
-                   that.send(pcmData)
-                }
-            } else {
-                proc.disconnect(source)
-                source.disconnect(proc)
-            }
-        }
-    }
+    this.streamSource = this.context.createMediaStreamSource(stream)
+    this.audioProcessor = this.context.createScriptProcessor(512, 1, 1)
+    this.streamSource.connect(this.audioProcessor)
+    this.audioProcessor.connect(this.context.destination)
+    this.audioProcessor.onaudioprocess = onAudioIn.bind(this)
 }
 
 function onError (error) {
     console.log('Error getting user media: ' + error)
+}
+
+function onAudioIn( event ) {
+    var data = event.inputBuffer.getChannelData(0)
+    if(data) {
+        var size = data.length
+        var pcmData = new Buffer(size * 2)
+        for(var i = 0; i < size; i++) {
+            var x = data[i] * 32768
+            x = Math.min(Math.max(x, -32768), 32767)
+            pcmData.writeInt16LE(x, i * 2)
+        }
+
+        if (this.client) {
+            if (this.sending || this.out_queue.length > 0) {
+                this.out_queue.push(pcmData);
+                while(this.out_queue > 100) {
+                    this.out_queue.shift()
+                }
+            } else {
+               this.send(pcmData)
+            }
+        } else {
+            this.streamSource.disconnect(this.audioProcessor)
+            this.audioProcessor.disconnect(this.context.destination)
+            //this.streamSource.disconnect(this.audioProcessor)
+        }
+    }
+
+    var output = event.outputBuffer.getChannelData(0)
+    for(var i = 0, n = output.length; i < n; i++) {
+        output[i] = 0
+    }
 }
 
 function onVoice( pcmData ) {
@@ -125,7 +133,7 @@ function onVoice( pcmData ) {
 
 function sendNext() {
     if(this.out_queue.length > 0) {
-        var data = this.queue.shift()
+        var data = this.out_queue.shift()
         this.send(data)
     } else {
         this.sending = false
