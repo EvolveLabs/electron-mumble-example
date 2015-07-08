@@ -19,7 +19,7 @@ function MumbleService($q, storageService) {
     this.error = null
     this.server = storageService.get('server')
     this.username = storageService.get('username')
-    this.password = null
+    this.password = storageService.get('password')
 }
 
 function connect(server, username, password) {
@@ -34,7 +34,7 @@ function connect(server, username, password) {
     this.error = null
     this.server = this.storageService.set('server', server)
     this.username = this.storageService.set('username', username)
-    this.password = password
+    this.password = this.storageService.set('password', password)
 
     mumble.connect( server, {}, function ( error, _client ) {
         if( error ) {
@@ -77,42 +77,36 @@ function disconnect() {
 
 function onUserMedia (stream) {
     this.inputSource = this.inputContext.createMediaStreamSource(stream)
-    this.inputProcessor = this.inputContext.createScriptProcessor(2048, 1, 1)
+    this.inputProcessor = this.inputContext.createScriptProcessor(1024, 1, 1)
     this.inputSource.connect(this.inputProcessor)
     this.inputProcessor.connect(this.inputContext.destination)
-    this.inputProcessor.onaudioprocess = onAudioIn.bind(this)
+    this.inputProcessor.onaudioprocess = onAudio.bind(this)
 }
 
 function onError (error) {
     console.log('Error getting user media: ' + error)
 }
 
-function onAudioIn( event ) {
+function onAudio( event ) {
     var data = event.inputBuffer.getChannelData(0)
-    if(data) {
-        var size = data.length
-        var pcmData = new Buffer(size * 2)
-        for(var i = 0; i < size; i++) {
-            var x = data[i] * 32768
-            ///x = Math.min(Math.max(x, -32768), 32767)
-            x = Math.min(Math.max(x, -30000), 30000)
-            pcmData.writeInt16LE(x, i * 2)
-        }
-
-        if (this.sending || this.out_queue.length > 0) {
-            this.out_queue.push(pcmData);
-            while(this.out_queue > 100) {
-                this.out_queue.shift()
-            }
-        } else {
-           this.send(pcmData)
-        }
+    var size = data.length
+    var pcmData = new Buffer(size * 2)
+    for(var i = 0; i < size; i++) {
+        var x = data[i] * 32767
+        x = Math.min(Math.max(x, -32768), 32767)
+        //x = Math.abs(x) > 24000 ? 0 : x
+        //x = Math.min(Math.max(x, -30000), 30000)
+        pcmData.writeInt16LE(x, i * 2)
     }
 
-    // var output = event.outputBuffer.getChannelData(0)
-    // for(var i = 0, n = output.length; i < n; i++) {
-    //     output[i] = 0
-    // }
+    if (this.sending || this.out_queue.length > 0) {
+        this.out_queue.push(pcmData);
+        while(this.out_queue > 100) {
+            this.out_queue.shift()
+        }
+    } else {
+       this.send(pcmData)
+    }
 }
 
 function onVoice( pcmData ) {

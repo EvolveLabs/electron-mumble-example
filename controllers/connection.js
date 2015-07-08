@@ -6,6 +6,7 @@ module.exports = function ($scope, $location, mumbleService) {
     $scope.error = mumbleService.error
     $scope.server = mumbleService.server
     $scope.username = mumbleService.username
+    $scope.password = mumbleService.password
 
     $scope.connect = function () {
         $scope.connecting = true
