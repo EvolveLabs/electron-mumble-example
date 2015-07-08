@@ -12,7 +12,8 @@ function MumbleService($q, storageService) {
     this.playing = false
     this.client = null
     this.startTime = 0
-    this.context = new AudioContext()
+    this.outputContext = new AudioContext()
+    this.inputContext = new AudioContext()
 
     this.status = null
     this.error = null
@@ -63,6 +64,10 @@ function connect(server, username, password) {
 function disconnect() {
     if (this.client) {
         console.log('disconnecting.')
+
+        this.inputSource.disconnect(this.intputProcessor)
+        this.inputProcessor.disconnect(this.inputContext.destination)
+
         this.client.disconnect()
         this.client = null
         this.status = null
@@ -71,13 +76,11 @@ function disconnect() {
 }
 
 function onUserMedia (stream) {
-
-    var that = this
-    this.streamSource = this.context.createMediaStreamSource(stream)
-    this.audioProcessor = this.context.createScriptProcessor(512, 1, 1)
-    this.streamSource.connect(this.audioProcessor)
-    this.audioProcessor.connect(this.context.destination)
-    this.audioProcessor.onaudioprocess = onAudioIn.bind(this)
+    this.inputSource = this.inputContext.createMediaStreamSource(stream)
+    this.inputProcessor = this.inputContext.createScriptProcessor(2048, 1, 1)
+    this.inputSource.connect(this.inputProcessor)
+    this.inputProcessor.connect(this.inputContext.destination)
+    this.inputProcessor.onaudioprocess = onAudioIn.bind(this)
 }
 
 function onError (error) {
@@ -91,30 +94,25 @@ function onAudioIn( event ) {
         var pcmData = new Buffer(size * 2)
         for(var i = 0; i < size; i++) {
             var x = data[i] * 32768
-            x = Math.min(Math.max(x, -32768), 32767)
+            ///x = Math.min(Math.max(x, -32768), 32767)
+            x = Math.min(Math.max(x, -30000), 30000)
             pcmData.writeInt16LE(x, i * 2)
         }
 
-        if (this.client) {
-            if (this.sending || this.out_queue.length > 0) {
-                this.out_queue.push(pcmData);
-                while(this.out_queue > 100) {
-                    this.out_queue.shift()
-                }
-            } else {
-               this.send(pcmData)
+        if (this.sending || this.out_queue.length > 0) {
+            this.out_queue.push(pcmData);
+            while(this.out_queue > 100) {
+                this.out_queue.shift()
             }
         } else {
-            this.streamSource.disconnect(this.audioProcessor)
-            this.audioProcessor.disconnect(this.context.destination)
-            //this.streamSource.disconnect(this.audioProcessor)
+           this.send(pcmData)
         }
     }
 
-    var output = event.outputBuffer.getChannelData(0)
-    for(var i = 0, n = output.length; i < n; i++) {
-        output[i] = 0
-    }
+    // var output = event.outputBuffer.getChannelData(0)
+    // for(var i = 0, n = output.length; i < n; i++) {
+    //     output[i] = 0
+    // }
 }
 
 function onVoice( pcmData ) {
@@ -157,11 +155,11 @@ function playNext() {
 function play(data) {
     this.playing = true
 
-    var buffer = this.context.createBuffer(1, data.length, this.client.connection.SAMPLING_RATE)
+    var buffer = this.outputContext.createBuffer(1, data.length, this.client.connection.SAMPLING_RATE)
     buffer.getChannelData(0).set(data)
 
-    var source = this.context.createBufferSource()
-    source.connect(this.context.destination)
+    var source = this.outputContext.createBufferSource()
+    source.connect(this.outputContext.destination)
     source.onended = playNext.bind(this)
     source.buffer = buffer
     source.start(this.startTime)
