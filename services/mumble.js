@@ -12,8 +12,18 @@ function MumbleService($q, storageService) {
     this.playing = false
     this.client = null
     this.startTime = 0
-    this.outputContext = new AudioContext()
-    this.inputContext = new AudioContext()
+    this.audioContext = new AudioContext()
+    this.inputFilter = this.audioContext.createBiquadFilter()
+
+    console.log(util.inspect(this.audioContext))
+
+    this.inputFilter.type = 'bandpass'
+    this.inputFilter.frequency.value = 440
+    this.inputFilter.gain.value = 5;
+
+    this.outputGainNode = this.audioContext.createGain()
+    this.outputGainNode.gain.value = 10;
+    this.outputGainNode.connect(this.audioContext.destination)
 
     this.status = null
     this.error = null
@@ -65,8 +75,9 @@ function disconnect() {
     if (this.client) {
         console.log('disconnecting.')
 
-        this.inputSource.disconnect(this.intputProcessor)
-        this.inputProcessor.disconnect(this.inputContext.destination)
+        //this.inputSource.disconnect(this.filter)
+        //this.filter.disconnect(this.inputProcessor)
+        //this.inputProcessor.disconnect(this.inputContext.destination)
 
         this.client.disconnect()
         this.client = null
@@ -76,10 +87,16 @@ function disconnect() {
 }
 
 function onUserMedia (stream) {
-    this.inputSource = this.inputContext.createMediaStreamSource(stream)
-    this.inputProcessor = this.inputContext.createScriptProcessor(1024, 1, 1)
-    this.inputSource.connect(this.inputProcessor)
-    this.inputProcessor.connect(this.inputContext.destination)
+    // Create the source and processor
+    this.inputSource = this.audioContext.createMediaStreamSource(stream)
+    this.inputProcessor = this.audioContext.createScriptProcessor(4096, 1, 1)
+
+    // Bind to the input filter
+    this.inputSource.connect(this.inputFilter)
+    this.inputFilter.connect(this.inputProcessor)
+
+    // Bind to the audio context and onAudio function
+    this.inputProcessor.connect(this.audioContext.destination)
     this.inputProcessor.onaudioprocess = onAudio.bind(this)
 }
 
@@ -91,22 +108,20 @@ function onAudio( event ) {
     var data = event.inputBuffer.getChannelData(0)
     var size = data.length
     var pcmData = new Buffer(size * 2)
+    var avg = 0
     for(var i = 0; i < size; i++) {
-        var x = data[i] * 32767
+        var x = data[i] * 32768
         x = Math.min(Math.max(x, -32768), 32767)
-        //x = Math.abs(x) > 24000 ? 0 : x
-        //x = Math.min(Math.max(x, -30000), 30000)
         pcmData.writeInt16LE(x, i * 2)
     }
 
-    if (this.sending || this.out_queue.length > 0) {
-        this.out_queue.push(pcmData);
-        while(this.out_queue > 100) {
-            this.out_queue.shift()
-        }
-    } else {
-       this.send(pcmData)
+    // 0 out the outputBuffer so you don't hear yourself
+    var output = event.outputBuffer
+    for(var i = 0, n = output.leng; i < n; i++) {
+        output[i] = 0
     }
+
+    this.send(pcmData)
 }
 
 function onVoice( pcmData ) {
@@ -123,18 +138,8 @@ function onVoice( pcmData ) {
     }
 }
 
-function sendNext() {
-    if(this.out_queue.length > 0) {
-        var data = this.out_queue.shift()
-        this.send(data)
-    } else {
-        this.sending = false
-    }
-}
-
 function send(data) {
-    this.sending = true
-    this.out_stream.write(data, sendNext.bind(this))
+    this.out_stream.write(data)
 }
 
 function playNext() {
@@ -149,15 +154,15 @@ function playNext() {
 function play(data) {
     this.playing = true
 
-    var buffer = this.outputContext.createBuffer(1, data.length, this.client.connection.SAMPLING_RATE)
+    var buffer = this.audioContext.createBuffer(1, data.length, this.client.connection.SAMPLING_RATE)
     buffer.getChannelData(0).set(data)
 
-    var source = this.outputContext.createBufferSource()
-    source.connect(this.outputContext.destination)
+    var source = this.audioContext.createBufferSource()
+    source.connect(this.outputGainNode)
     source.onended = playNext.bind(this)
     source.buffer = buffer
     source.start(this.startTime)
-    this.startTime += buffer.duration
+    this.startTime += (buffer.duration - .005)
 }
 
 
@@ -166,5 +171,5 @@ MumbleService.prototype.disconnect = disconnect
 MumbleService.prototype.play = play
 MumbleService.prototype.playNext = playNext
 MumbleService.prototype.send = send
-MumbleService.prototype.sendNext = sendNext
+//MumbleService.prototype.sendNext = sendNext
 module.exports = MumbleService
